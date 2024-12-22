@@ -3,6 +3,7 @@ video.avi
 *.jpg
 processed_videos
 processed_images/*.png
+*.csv
 
 __pycache__/
 *.py[cod]

@@ -1,7 +1,0 @@
-ollama
-langfuse
-fastapi
-ragas
-streamlit
-langchain
-langchain_ollama
