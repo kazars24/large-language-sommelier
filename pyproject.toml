@@ -1,0 +1,28 @@
+[tool.poetry]
+name = "large-language-sommelier"
+version = "0.1.0"
+description = ""
+authors = ["Your Name <you@example.com>"]
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = "^3.12"
+langchain = "^0.3.12"
+langchain-core = "^0.3.25"
+langchain-community = "^0.3.12"
+gigachat = "^0.1.36"
+langchain-gigachat = "^0.3.2"
+langchain-huggingface = "^0.1.2"
+langchain-chroma = "^0.1.4"
+rank-bm25 = "^0.2.2"
+faiss-cpu = "^1.9.0.post1"
+python-dotenv = "^1.0.1"
+jupyter = "^1.1.1"
+ipywidgets = "^8.1.5"
+fastapi = "^0.115.6"
+uvicorn = "^0.34.0"
+
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
