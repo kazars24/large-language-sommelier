@@ -1,6 +1,6 @@
 import httpx
 import time
-from langchain_community.llms.ollama import Ollama
+from langchain_ollama.llms import OllamaLLM
 from langchain.callbacks.manager import CallbackManager
 from langchain.callbacks.streaming_stdout import StreamingStdOutCallbackHandler
 from config import OLLAMA_API_BASE
@@ -16,9 +16,9 @@ class OllamaAPIWrapper:
         self.callback_manager = CallbackManager([StreamingStdOutCallbackHandler()])
         self.llm = self._initialize_llm(model, temperature)
 
-    def _initialize_llm(self, model: str, temperature: float) -> Ollama:
+    def _initialize_llm(self, model: str, temperature: float) -> OllamaLLM:
         """Initializes the Ollama LLM."""
-        return Ollama(
+        return OllamaLLM(
             base_url=self.base_url,
             model=model,
             callback_manager=self.callback_manager,
