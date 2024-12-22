@@ -21,6 +21,8 @@ jupyter = "^1.1.1"
 ipywidgets = "^8.1.5"
 fastapi = "^0.115.6"
 uvicorn = "^0.34.0"
+aiogram = "^3.16.0"
+aiohttp = "^3.11.11"
 
 
 [build-system]
