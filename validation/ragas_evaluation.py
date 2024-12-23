@@ -1,5 +1,5 @@
 from ragas import evaluate
-from ragas.metrics import faithfulness, answer_relevancy
+from ragas.metrics import faithfulness, answer_relevancy, context_precision, context_recall
 from langchain_community.embeddings import HuggingFaceEmbeddings
 from langchain_core.outputs import LLMResult
 from datasets import Dataset
@@ -10,7 +10,7 @@ from langchain_community.chat_models.gigachat import GigaChat
 from validation.config import EMBEDDING_MODEL_NAME
 from src.retriever.splitter import UniversalDocumentSplitter
 from src.core.config import settings
-
+import streamlit as st
 
 class OllamaRagasLLM(BaseRagasLLM):
     """Custom Ragas LLM implementation for Ollama."""
@@ -40,7 +40,6 @@ class OllamaRagasLLM(BaseRagasLLM):
             generations.append(prompt_generations)
 
         return LLMResult(generations=generations)
-
 
 class SummaryEvaluator:
     """Class for evaluating summaries using Ragas."""
@@ -77,26 +76,29 @@ class SummaryEvaluator:
 
         return ragas_scores
 
-
 class RagasEvaluator:
     """Class for evaluating summaries using Ragas."""
 
-    def __init__(self, ollama_llm: OllamaLLM, model_server: str, model_name: str):
+    def __init__(self, ollama_llm: OllamaLLM, model_server: str, model_name: str, embedding_model_name: str = EMBEDDING_MODEL_NAME, debug_mode: bool = False):
         self.ragas_llm = OllamaRagasLLM(ollama_llm)
-        self.embeddings = HuggingFaceEmbeddings(model_name=EMBEDDING_MODEL_NAME)
-        self.metrics = [faithfulness, answer_relevancy]  # TODO: add dataset to use with context_precision and answer_correctness
+        self.embeddings = HuggingFaceEmbeddings(model_name=embedding_model_name)
+        # Use only metrics that don't require ground truth/reference
+        self.metrics = [answer_relevancy]
         self.model_server = model_server
         self.model_name = model_name
+        self.debug_mode = debug_mode
 
-    def load_and_split_docs(self, data_dir: str, filepath: str = None, source_column: str = None, chunk_size: int = 500, chunk_overlap: int = 50):
+    def load_and_split_docs(self, data_dir: str, filepath: str = None):
         """
         Loads documents and splits them using the TextSplitter from the main RAG app.
         """
         
-        if filepath and source_column:
-            splitter = UniversalDocumentSplitter(filepath=filepath, source_column=source_column)
+        if filepath:
+            splitter = UniversalDocumentSplitter(filepath=filepath)
+        elif data_dir:
+            splitter = UniversalDocumentSplitter(data_dir=data_dir)
         else:
-            splitter = UniversalDocumentSplitter(filepath=settings.DATA_FILEPATH, source_column=settings.DATA_SOURCE_COLUMN)
+            splitter = UniversalDocumentSplitter(filepath=settings.DATA_FILEPATH)
 
         docs = splitter.split_and_process()
         return docs
@@ -116,6 +118,11 @@ class RagasEvaluator:
             "answer": [rag_response],
             "contexts": contexts,
         }
+
+        if self.debug_mode:
+            st.markdown("**Debug: Input Data (data):**")
+            st.write(data)
+
         dataset = Dataset.from_dict(data)
 
         result = evaluate(
@@ -124,8 +131,15 @@ class RagasEvaluator:
             llm=self.ragas_llm,
             embeddings=self.embeddings
         )
+
+        if self.debug_mode:
+            st.markdown("**Debug: Raw Evaluation Result (result):**")
+            st.write(result)
+
         ragas_answer_relevancy = result["answer_relevancy"]
+        #ragas_faithfulness = result["faithfulness"]
 
         return {
-            "ragas_answer_relevancy": ragas_answer_relevancy
+            "answer_relevancy": ragas_answer_relevancy,
+            #"faithfulness": ragas_faithfulness,
         }

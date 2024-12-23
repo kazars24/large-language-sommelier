@@ -1,21 +1,19 @@
-from fastapi import FastAPI, Depends
+from fastapi import FastAPI, Depends, HTTPException
 
 from src.api.services import get_recommendation_service, RecommendationService
 from src.core.models import Query, ModelChoice
 from src.core.config import settings
-
+import os
 
 app = FastAPI(
     title="Wine Recommendation API",
     description="API для получения рекомендаций по винам",
-    version="1.1.0"
+    version="1.2.0"
 )
-
 
 @app.get("/")
 async def root():
     return {"message": "Wine Recommendation API is running"}
-
 
 @app.post("/recommend/")
 async def get_recommendation(query: Query, model_choice: ModelChoice, rag_service: RecommendationService = Depends(get_recommendation_service)):
@@ -24,29 +22,41 @@ async def get_recommendation(query: Query, model_choice: ModelChoice, rag_servic
     print(f"  Model Choice: {model_choice}")
 
     response = rag_service.get_recommendation(query.question, model_choice.model_server, model_choice.model_name)
-    return {"response": response}
-
+    return {"response": response, "question": query.question}
 
 @app.post("/update_data/")
-async def update_rag_data(filepath: str = None, source_column: str = None):
+async def update_rag_data(filepath: str = None, data_dir: str = None):
     """
     Update the data used by the RAG system.
-    If filepath and source_column are provided, use them.
-    Otherwise, use the default values from settings.
+    Handles both single file uploads and directory paths for multiple files.
     """
-    global rag_service  # Access the global variable
+    global rag_service
 
-    if filepath and source_column:
+    if filepath:
+        # Process a single file
         settings.DATA_FILEPATH = filepath
-        settings.DATA_SOURCE_COLUMN = source_column
+        # settings.DATA_DIR = None  <- Removed this line
+    elif data_dir:
+        # Process a directory
+        settings.RAG_DATA_DIR = data_dir
+        # settings.DATA_FILEPATH = None <- Removed this line
     else:
+        # Use default values from settings if neither filepath nor data_dir is provided
         filepath = settings.DATA_FILEPATH
-        source_column = settings.DATA_SOURCE_COLUMN
+        data_dir = settings.RAG_DATA_DIR
 
     # Reinitialize the RAG system with the new data
     rag_service = get_recommendation_service()
 
-    return {"message": "RAG data updated successfully", "filepath": filepath, "source_column": source_column}
+    # Determine the source of data for the response message
+    if filepath:
+        source = f"filepath: {filepath}"
+    elif data_dir:
+        source = f"data directory: {data_dir}"
+    else:
+        source = "default data from settings"
+
+    return {"message": "RAG data updated successfully", "source": source}
 
 # Initialize rag_service here to make it available globally
 rag_service = get_recommendation_service()

@@ -6,18 +6,17 @@ from langchain.text_splitter import RecursiveCharacterTextSplitter
 from src.retriever.semantic_splitter import SemanticSplitter
 import os
 
-
 class CSVSplitter:
-    """Splits CSV files into chunks based on a specified chunk size."""
+    """Splits CSV files into chunks, optionally adding a name column to each chunk."""
 
-    def __init__(self, filepath, source_column, chunk_size=500, chunk_overlap=0):
+    def __init__(self, filepath, chunk_size=500, chunk_overlap=0, name_column=None):
         self.filepath = filepath
-        self.source_column = source_column
         self.chunk_size = chunk_size
         self.chunk_overlap = chunk_overlap
+        self.name_column = name_column
 
     def _load_data(self):
-        loader = CSVLoader(self.filepath, source_column=self.source_column, encoding="utf-8")
+        loader = CSVLoader(self.filepath, encoding="utf-8")
         return loader.load()
 
     def split_and_process(self):
@@ -26,8 +25,24 @@ class CSVSplitter:
             chunk_size=self.chunk_size, chunk_overlap=self.chunk_overlap
         )
         split_docs = text_splitter.split_documents(docs)
-        return split_docs
 
+        # Add name column to each chunk if provided
+        if self.name_column:
+            processed_docs = []
+            for doc in split_docs:
+                original_row_index = int(doc.metadata['row'])
+                name_value = docs[original_row_index].page_content.split(":")[1].split(",")[0].strip()
+                
+                # Ensure doc.page_content is a string before concatenation
+                if isinstance(doc.page_content, str):
+                    doc.page_content = f"{self.name_column}: {name_value}\n{doc.page_content}"
+                else:
+                    print(f"Warning: doc.page_content is not a string. Type: {type(doc.page_content)}")
+                
+                processed_docs.append(doc)
+            split_docs = processed_docs
+
+        return split_docs
 
 class UniversalDocumentSplitter:
     """
@@ -35,12 +50,12 @@ class UniversalDocumentSplitter:
     Uses CSVSplitter for .csv files and SemanticSplitter for other types.
     """
 
-    def __init__(self, filepath, source_column=None, chunk_size=500, chunk_overlap=50, data_dir=None):
+    def __init__(self, filepath=None, chunk_size=500, chunk_overlap=50, data_dir=None, name_column=None):
         self.filepath = filepath
-        self.source_column = source_column
         self.chunk_size = chunk_size
         self.chunk_overlap = chunk_overlap
-        self.data_dir = data_dir  # Optional directory for multiple files
+        self.data_dir = data_dir
+        self.name_column = name_column
 
         self.splitter = self._get_splitter()
 
@@ -48,14 +63,13 @@ class UniversalDocumentSplitter:
         if self.filepath and self.filepath.lower().endswith(".csv"):
             return CSVSplitter(
                 self.filepath,
-                self.source_column,
                 chunk_size=self.chunk_size,
                 chunk_overlap=self.chunk_overlap,
+                name_column=self.name_column,
             )
         else:
             return TextSplitter(
                 filepath=self.filepath,
-                source_column=self.source_column,
                 chunk_size=self.chunk_size,
                 chunk_overlap=self.chunk_overlap,
             )
@@ -67,7 +81,7 @@ class UniversalDocumentSplitter:
             for filename in os.listdir(self.data_dir):
                 filepath = os.path.join(self.data_dir, filename)
                 if filename.lower().endswith(".csv"):
-                    loader = CSVLoader(filepath, source_column=self.source_column, encoding="utf-8")
+                    loader = CSVLoader(filepath, encoding="utf-8")
                 elif filename.lower().endswith(".pdf"):
                     loader = PyPDFLoader(filepath)
                 else:
@@ -77,7 +91,7 @@ class UniversalDocumentSplitter:
             return docs
         elif self.filepath:
             if self.filepath.lower().endswith(".csv"):
-                loader = CSVLoader(self.filepath, source_column=self.source_column, encoding="utf-8")
+                loader = CSVLoader(self.filepath, encoding="utf-8")
             elif self.filepath.lower().endswith(".pdf"):
                 loader = PyPDFLoader(self.filepath)
             else:
@@ -94,11 +108,9 @@ class UniversalDocumentSplitter:
         db = Chroma.from_documents(documents, embeddings)
         return db.as_retriever()
 
-
 class TextSplitter:
-    def __init__(self, filepath, source_column, chunk_size=500, chunk_overlap=50):
+    def __init__(self, filepath=None, chunk_size=500, chunk_overlap=50):
         self.filepath = filepath
-        self.source_column = source_column
         self.chunk_size = chunk_size
         self.chunk_overlap = chunk_overlap
         self.splitter = self._create_splitter()
@@ -109,14 +121,14 @@ class TextSplitter:
         return splitter
 
     def _load_data(self):
-        loader = DirectoryLoader(
-            self.filepath,
-            glob="**/*.pdf",
-            loader_cls=PyPDFLoader,
-            show_progress=True,
-            use_multithreading=True
-        )
-        return loader.load()
+        if self.filepath:
+            if self.filepath.lower().endswith(".pdf"):
+                loader = PyPDFLoader(self.filepath)
+                return loader.load()
+            else:
+                raise ValueError("Unsupported file type. Only PDF are supported for TextSplitter.")
+        else:
+            raise ValueError("'filepath' must be provided for TextSplitter.")
 
     def split_and_process(self):
         docs = self._load_data()
