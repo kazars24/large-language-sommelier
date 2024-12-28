@@ -5,6 +5,7 @@ import aiohttp
 from aiogram import Bot, Dispatcher, F
 from aiogram.filters import Command
 from aiogram.types import Message
+from aiogram.enums import ParseMode
 from dotenv import load_dotenv
 
 # Настройка логирования
@@ -63,7 +64,7 @@ class WineRecommendationBot:
             "Я могу помочь вам с выбором вина. Просто задайте мне вопрос.\n\n"
             "Используйте /help для получения дополнительной информации."
         )
-        await message.answer(welcome_message)
+        await message.answer(welcome_message, parse_mode=ParseMode.MARKDOWN)
 
     async def command_help(self, message: Message) -> None:
         """Обработчик команды /help"""
@@ -74,13 +75,13 @@ class WineRecommendationBot:
             "• Рассказывать о характеристиках вин\n\n"
             "Просто напишите свой вопрос!"
         )
-        await message.answer(help_message)
+        await message.answer(help_message, parse_mode=ParseMode.MARKDOWN)
 
     async def handle_message(self, message: Message) -> None:
         """Обработчик текстовых сообщений"""
         try:
             # Отправка сообщения о начале обработки
-            processing_msg = await message.answer("🤔 Обрабатываю ваш запрос...")
+            processing_msg = await message.answer("🤔 Обрабатываю ваш запрос...", parse_mode=ParseMode.MARKDOWN)
 
             # Получение рекомендации
             response = await self.get_wine_recommendation(message.text)
@@ -92,12 +93,13 @@ class WineRecommendationBot:
                 logger.error(f"Error deleting processing message: {e}")
 
             # Отправка ответа
-            await message.answer(response)
+            await message.answer(response, parse_mode=ParseMode.MARKDOWN)
 
         except Exception as e:
             logger.error(f"Error in handle_message: {e}")
             await message.answer(
-                "Извините, произошла ошибка при обработке вашего запроса. Попробуйте позже."
+                "Извините, произошла ошибка при обработке вашего запроса. Попробуйте позже.",
+                parse_mode=ParseMode.MARKDOWN
             )
 
     async def start(self):
