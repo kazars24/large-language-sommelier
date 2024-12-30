@@ -36,3 +36,9 @@ try:
 except requests.exceptions.RequestException as e:
     print(f"Error making request: {e}")
 ```
+
+## TG bot
+### Запуск
+```
+python app.py
+```
