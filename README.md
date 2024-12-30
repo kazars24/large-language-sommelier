@@ -3,7 +3,7 @@
 ## API для RAG-системы
 ### Запуск API для RAG-системы
 ```
-python src/api/rag_api.py
+python src/main.py
 ```
 ### Пример использования
 ```

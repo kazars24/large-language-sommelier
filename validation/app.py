@@ -140,10 +140,17 @@ def main():
                         output=eval_result
                     )
 
+                    # Replace the existing metrics display code with:
                     st.markdown("**Evaluation Results:**")
                     col1, col2 = st.columns(2)
-                    col1.metric("Ragas Answer Relevancy", f"{eval_result['answer_relevancy'][0]:.4f}")
-                    #col2.metric("Ragas Faithfulness", f"{eval_result['faithfulness']:.4f}")
+
+                    col1.metric("Answer Relevancy", f"{eval_result['answer_relevancy']:.4f}")
+
+                    if debug_mode:
+                        st.markdown("### Metric Explanations")
+                        st.markdown("""
+                        - **Answer Relevancy**: Measures how well the answer addresses the question
+                        """)
 
         else:
             st.warning("Please enter a question to evaluate.")

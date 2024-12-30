@@ -3,10 +3,9 @@ from langchain_core.runnables import RunnablePassthrough, RunnableParallel
 from langchain.prompts import PromptTemplate
 from langchain_ollama.llms import OllamaLLM
 from langchain_gigachat.chat_models import GigaChat
-from langchain_community.document_loaders.csv_loader import CSVLoader
 
 from src.core.config import settings
-from src.retriever.splitter import UniversalDocumentSplitter, CSVSplitter
+from src.retriever.splitter import UniversalDocumentSplitter
 from src.utils.loaders import load_embedding_model
 
 class RecommendationService:
@@ -75,24 +74,21 @@ class RecommendationService:
         return self.rag_chain.invoke(query)
 
 def get_recommendation_service():
-    # Create splitter for the main data, passing name_column to CSVSplitter
     splitter = UniversalDocumentSplitter(
         filepath=settings.DATA_FILEPATH,
         data_dir=settings.RAG_DATA_DIR,
         chunk_size=500,
-        chunk_overlap=50,
-        name_column=settings.WINE_NAME_COLUMN
+        chunk_overlap=50
     )
 
     docs = splitter.split_and_process()
     embedding_model = load_embedding_model()
     retriever = splitter.create_vector_store(docs, embedding_model)
 
-    # Create catalog retriever (no need for name_column here)
     catalog_splitter = UniversalDocumentSplitter(
         filepath=settings.CATALOGUE_FILEPATH,
-        chunk_size=3000,
-        chunk_overlap=0
+        chunk_size=500,
+        chunk_overlap=50
     )
     catalog_docs = catalog_splitter.split_and_process()
     catalog_retriever = catalog_splitter.create_vector_store(

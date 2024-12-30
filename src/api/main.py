@@ -1,4 +1,4 @@
-from fastapi import FastAPI, Depends, HTTPException
+from fastapi import FastAPI, Depends
 
 from src.api.services import get_recommendation_service, RecommendationService
 from src.core.models import Query, ModelChoice
@@ -35,20 +35,16 @@ async def update_rag_data(filepath: str = None, data_dir: str = None):
     if filepath:
         # Process a single file
         settings.DATA_FILEPATH = filepath
-        # settings.DATA_DIR = None  <- Removed this line
     elif data_dir:
         # Process a directory
         settings.RAG_DATA_DIR = data_dir
-        # settings.DATA_FILEPATH = None <- Removed this line
     else:
         # Use default values from settings if neither filepath nor data_dir is provided
         filepath = settings.DATA_FILEPATH
         data_dir = settings.RAG_DATA_DIR
 
-    # Reinitialize the RAG system with the new data
     rag_service = get_recommendation_service()
 
-    # Determine the source of data for the response message
     if filepath:
         source = f"filepath: {filepath}"
     elif data_dir:
@@ -58,5 +54,4 @@ async def update_rag_data(filepath: str = None, data_dir: str = None):
 
     return {"message": "RAG data updated successfully", "source": source}
 
-# Initialize rag_service here to make it available globally
 rag_service = get_recommendation_service()
