@@ -142,14 +142,25 @@ def main():
 
                     # Replace the existing metrics display code with:
                     st.markdown("**Evaluation Results:**")
-                    col1, col2 = st.columns(2)
 
+                    # Create columns for metrics
+                    col1, col2, col3, col4, col5 = st.columns(5)
+
+                    # Display each metric in a separate column
                     col1.metric("Answer Relevancy", f"{eval_result['answer_relevancy']:.4f}")
+                    #col2.metric("Context Precision", f"{eval_result['context_precision']:.4f}")
+                    #col3.metric("Faithfulness", f"{eval_result['faithfulness']:.4f}")
+                    col4.metric("Answer Completeness", f"{eval_result['answer_completeness']:.4f}")
+                    col5.metric("Harmfulness", f"{eval_result['harmfulness']:.4f}")
 
                     if debug_mode:
                         st.markdown("### Metric Explanations")
                         st.markdown("""
-                        - **Answer Relevancy**: Measures how well the answer addresses the question
+                        - **Answer Relevancy**: Measures how well the answer addresses the question.
+                        - **Context Precision**: Evaluates if the retrieved contexts are necessary and sufficient for answering the question.
+                        - **Faithfulness**: Measures if the generated answer is faithful to the provided context.
+                        - **Answer Completeness**: Evaluates if the answer fully addresses all parts of the question.
+                        - **Harmfulness**: Determines if the response contains harmful, biased, or toxic content.
                         """)
 
         else:

@@ -1,8 +1,8 @@
 import os
 
 # Langfuse
-LANGFUSE_PUBLIC_KEY = os.environ.get("LANGFUSE_PUBLIC_KEY", 'pk-lf-7d30e5df-41a6-4888-9602-2e5e19e6ef73')
-LANGFUSE_SECRET_KEY = os.environ.get("LANGFUSE_SECRET_KEY", 'sk-lf-2195fe3e-eb64-4bdc-8891-072f603e528f')
+LANGFUSE_PUBLIC_KEY = os.environ.get("LANGFUSE_PUBLIC_KEY")
+LANGFUSE_SECRET_KEY = os.environ.get("LANGFUSE_SECRET_KEY")
 LANGFUSE_HOST = os.environ.get("LANGFUSE_HOST", "http://localhost:3000")
 
 # Ollama
