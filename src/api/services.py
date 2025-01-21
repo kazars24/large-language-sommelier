@@ -20,7 +20,8 @@ class RecommendationService:
             llm = OllamaLLM(
                 base_url=settings.OLLAMA_API_BASE,
                 model=model_name,
-                timeout=30
+                timeout=30,
+                num_ctx=32768
             )
             llm.verbose = False
         elif model_server == "gigachat":
@@ -33,7 +34,7 @@ class RecommendationService:
             llm.verbose = False
         else:
             raise ValueError(f"Invalid model server: {model_server}")
-        
+
         # Retrieve both context and catalog
         rag_chain_with_catalog = RunnableParallel(
             {
@@ -72,6 +73,29 @@ class RecommendationService:
         elif self.rag_chain.steps[2].model != model_name:
             self._create_rag_chain(model_server, model_name)
         return self.rag_chain.invoke(query)
+
+    def get_recommendation_with_context(self, query: str, model_server: str, model_name: str):
+        print(f"RecommendationService received:")
+        print(f"  Query: {query}")
+        print(f"  Model Server: {model_server}")
+        print(f"  Model Name: {model_name}")
+
+        if self.rag_chain is None:
+            self._create_rag_chain(model_server, model_name)
+        elif self.rag_chain.steps[2].model != model_name:
+            self._create_rag_chain(model_server, model_name)
+
+        # Retrieve the relevant contexts and the recommendation
+        retrieved = self.rag_chain.steps[0].invoke(query)
+        recommendation = self.rag_chain.invoke(query)
+
+        return {
+            "recommendation": recommendation,
+            "retrieved_contexts": {
+                "context": retrieved["context"],
+                "catalog": retrieved["catalog"]
+            }
+        }
 
 def get_recommendation_service():
     splitter = UniversalDocumentSplitter(

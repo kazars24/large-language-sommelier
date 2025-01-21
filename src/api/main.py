@@ -20,9 +20,17 @@ async def get_recommendation(query: Query, model_choice: ModelChoice, rag_servic
     print(f"Received request at /recommend/ with:")
     print(f"  Query: {query}")
     print(f"  Model Choice: {model_choice}")
-
-    response = rag_service.get_recommendation(query.question, model_choice.model_server, model_choice.model_name)
-    return {"response": response, "question": query.question}
+    
+    # Get both response and contexts
+    res = rag_service.get_recommendation_with_context(
+        query.question,
+        model_choice.model_server,
+        model_choice.model_name
+    )
+    response = res['recommendation']
+    contexts = res['retrieved_contexts']['context']
+    
+    return {"response": response, "question": query.question, "contexts": contexts}
 
 @app.post("/update_data/")
 async def update_rag_data(filepath: str = None, data_dir: str = None):

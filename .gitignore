@@ -4,6 +4,8 @@ video.avi
 processed_videos
 processed_images/*.png
 *.csv
+.deepeval*
+data/
 
 __pycache__/
 *.py[cod]
