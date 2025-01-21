@@ -5,17 +5,16 @@ from typing import List, Dict, Any
 from datetime import datetime
 import uuid
 import sys, os
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 from core.metrics import RAGMetrics
 
 import platform
 if platform.system()=='Windows':
     asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
 
-
 class RAGSystemTester:
-    def __init__(self, base_url: str, metrics_collector):
+    def __init__(self, base_url: str, metrics_collector, ollama_url: str = "http://192.168.1.198:11434"):
         self.base_url = base_url
+        self.ollama_url = ollama_url
         self.metrics_collector = metrics_collector
         self.client = None
     
@@ -28,6 +27,17 @@ class RAGSystemTester:
         """Cleanup async context manager"""
         if self.client:
             await self.client.aclose()
+
+    async def get_models(self) -> List[str]:
+        """Retrieves available models from the Ollama API."""
+        try:
+            response = await self.client.get(f"{self.ollama_url}/api/tags")
+            response.raise_for_status()
+            models = response.json().get("models", [])
+            return [model["name"] for model in models]
+        except Exception as e:
+            print(f"Error fetching models: {e}")
+            return ["qwen2.5:7b-instruct-q4_0"]  # Default fallback
     
     async def update_data_source(self, filepath: str = None, data_dir: str = None) -> bool:
         """Update RAG system data source"""
@@ -56,27 +66,48 @@ class RAGSystemTester:
             raise RuntimeError("Client not initialized. Use async context manager.")
             
         start_time = time.time()
+        request_data = {
+            "query": {"question": query},
+            "model_choice": {
+                "model_server": model_server,
+                "model_name": model_name
+            }
+        }
+        
         response = await self.client.post(
             f"{self.base_url}/recommend/",
-            json={
-                "query": {"question": query},
-                "model_choice": {
-                    "model_server": model_server,
-                    "model_name": model_name
-                }
-            },
+            json=request_data,
             timeout=None
         )
-        
+
         result = response.json()
         latency = time.time() - start_time
+
+        trace = self.metrics_collector.langfuse.trace(
+            name=f"query_{datetime.now().strftime('%Y%m%d_%H%M%S')}",
+        )
+
+        trace.span(
+            name="input",
+            input={"query": query, "model": f"{model_server}/{model_name}"}
+        )
+
+        trace.span(
+            name="output",
+            output={
+                "response": result["response"],
+                "contexts": result.get("contexts", []),
+                "latency": latency
+            }
+        )
         
         return {
             "query": query,
             "response": result["response"],
             "contexts": result.get("contexts", []),
             "latency": latency,
-            "error": None
+            "error": None,
+            "trace_id": trace.id
         }
     
     async def run_batch_test(self,
@@ -96,11 +127,9 @@ class RAGSystemTester:
             for query in queries
         ]
         test_results = await asyncio.gather(*tasks)
-        print(f'[run_batch_test] test_results: {test_results}')
         
         # Collect metrics
         performance_metrics = await self.metrics_collector.collect_performance_metrics(test_results)
-        print(f'[run_batch_test] performance_metrics: {performance_metrics}')
         
         # Calculate RAG metrics for successful queries
         rag_metrics_list = []
@@ -109,7 +138,8 @@ class RAGSystemTester:
                 rag_metrics = await self.metrics_collector.collect_rag_metrics(
                     result["query"],
                     result["contexts"],
-                    result["response"]
+                    result["response"],
+                    model_name
                 )
                 rag_metrics_list.append(rag_metrics)
         

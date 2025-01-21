@@ -52,12 +52,13 @@ class RAGMetrics:
 class ValidationMetricsCollector:
     def __init__(self, langfuse_client: Langfuse):
         self.langfuse = langfuse_client
-        self._init_metrics()
+        self.critic_llm = None
+        self.metrics = {}
         
-    def _init_metrics(self):
+    def _init_metrics(self, model_name: str):
         """Initialize DeepEval metrics with critic LLM"""
         try:
-            self.critic_llm = OllamaEvalLLM("qwen2.5:7b-instruct-q4_0")
+            self.critic_llm = OllamaEvalLLM(model_name)
             
             # Initialize metrics with custom critic LLM
             self.metrics = {
@@ -105,12 +106,14 @@ class ValidationMetricsCollector:
             total_requests = len(test_results)
             errors = sum(1 for r in test_results if r.get('error'))
             
-            return PerformanceMetrics(
+            metrics = PerformanceMetrics(
                 latency=total_time / total_requests if total_requests > 0 else 0,
                 throughput=total_requests / total_time if total_time > 0 else 0,
                 success_rate=(total_requests - errors) / total_requests if total_requests > 0 else 0,
                 error_rate=errors / total_requests if total_requests > 0 else 0
             )
+            
+            return metrics
         except Exception as e:
             logger.error(f"Error collecting performance metrics: {str(e)}")
             raise
@@ -119,8 +122,11 @@ class ValidationMetricsCollector:
     async def collect_rag_metrics(self, 
                                 query: str,
                                 contexts: List[str],
-                                response: str) -> Optional[RAGMetrics]:
+                                response: str,
+                                model_name: str) -> Optional[RAGMetrics]:
         """Calculate RAG metrics using DeepEval"""
+        if not self.critic_llm or self.critic_llm.get_model_name() != model_name:
+            self._init_metrics(model_name)
         # Sanitize inputs
         clean_query = self._sanitize_input(query)
         clean_contexts = self._validate_contexts(contexts)
