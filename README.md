@@ -1,6 +1,16 @@
-# Large Language Sommelier
+# Large Language Sommelier 🍷
 
-A wine recommendation system powered by large language models with RAG (Retrieval Augmented Generation) capabilities. The project includes both an API service and a Telegram bot for wine recommendations.
+## About the project
+
+AI sommelier is your personal wine expert powered by large language models with RAG (Retrieval Augmented Generation) capabilities. The project includes both an API service and a Telegram bot for wine recommendations.
+
+## Description
+
+Large Language Sommelier helps you choose the perfect wine, taking into account many factors:
+- Compatibility with dishes
+- Preferences according to taste
+- Price range
+- A reason to choose a wine
 
 ## Project Structure
 ```
@@ -27,6 +37,10 @@ repo/
 - Retrieval-augmented generation for accurate recommendations
 - Telegram bot interface
 - Comprehensive validation framework
+
+## Data
+- A table with the wines presented in the assortment. It includes the following information: name, average price,tasting characteristics, interesting facts, aging method, fermentation method.
+- Buyer's Wine Guide, Robert Parker - A complete, easy-to-use guide to over 8,000 wines from the main wine regions from the author and publisher of The Wine Advocate.
 
 ## Getting Started
 
@@ -136,3 +150,11 @@ MODEL_NAME="your-model"
 OLLAMA_API_BASE="http://localhost:11434"
 EMBEDDING_MODEL_NAME="intfloat/multilingual-e5-small"
 ```
+
+## Telegram bot examples
+![Example 1](docs/tg_bot_example_1.jpeg "Example 1")
+![Example 2](docs/tg_bot_example_2.jpeg "Example 2")
+
+## The project team
+- Arseny Kazantcev - Data Scientist
+- Alexander Sesorov - ML Engineer & QA
