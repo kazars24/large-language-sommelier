@@ -22,6 +22,9 @@ class WineRecommendationBot:
     def __init__(self, token: str):
         self.bot = Bot(token=token)
         self.dp = Dispatcher()
+        # Default model settings
+        self.model_server = "ollama"
+        self.model_name = "qwen2.5:7b-instruct-q4_0"
         self.setup_handlers()
 
     def setup_handlers(self):
@@ -29,6 +32,7 @@ class WineRecommendationBot:
         # Команды
         self.dp.message.register(self.command_start, Command("start"))
         self.dp.message.register(self.command_help, Command("help"))
+        self.dp.message.register(self.command_switch, Command("switch"))
         
         # Текстовые сообщения
         self.dp.message.register(self.handle_message, F.text)
@@ -36,16 +40,26 @@ class WineRecommendationBot:
     async def get_wine_recommendation(self, question: str) -> str:
         """Получение рекомендации от API"""
         try:
-            async with aiohttp.ClientSession() as session:  # Создаем новую сессию для каждого запроса
+            async with aiohttp.ClientSession() as session:
                 async with session.post(
                     f"{API_BASE_URL}/recommend/",
-                    json={"question": question},
+                    json={
+                        "query": {"question": question},
+                        "model_choice": {
+                            "model_server": self.model_server,
+                            "model_name": self.model_name
+                        }
+                    },
                     headers={"Content-Type": "application/json"},
-                    timeout=aiohttp.ClientTimeout(total=30)  # Добавляем таймаут
+                    timeout=aiohttp.ClientTimeout(total=30)
                 ) as response:
                     if response.status == 200:
                         data = await response.json()
-                        return data["response"]
+                        
+                        # Формируем полный ответ с контекстами
+                        full_response = f"{data['response']}\n"
+                        
+                        return full_response
                     else:
                         error_text = await response.text()
                         logger.error(f"API error: Status {response.status}, Response: {error_text}")
@@ -62,7 +76,9 @@ class WineRecommendationBot:
         welcome_message = (
             "👋 Здравствуйте! Я ваш персональный сомелье-бот.\n\n"
             "Я могу помочь вам с выбором вина. Просто задайте мне вопрос.\n\n"
-            "Используйте /help для получения дополнительной информации."
+            "Используйте:\n"
+            "• /help для получения дополнительной информации\n"
+            "• /switch для изменения настроек модели"
         )
         await message.answer(welcome_message, parse_mode=ParseMode.MARKDOWN)
 
@@ -73,9 +89,64 @@ class WineRecommendationBot:
             "• Рекомендовать вина по вашим предпочтениям\n"
             "• Подбирать вина под определенные блюда\n"
             "• Рассказывать о характеристиках вин\n\n"
+            "Команды:\n"
+            "• /start - начать работу с ботом\n"
+            "• /help - показать это сообщение\n"
+            "• /switch - изменить настройки модели\n\n"
             "Просто напишите свой вопрос!"
         )
         await message.answer(help_message, parse_mode=ParseMode.MARKDOWN)
+
+    async def command_switch(self, message: Message) -> None:
+        """Обработчик команды /switch для изменения модели"""
+        current_settings = (
+            "📊 Текущие настройки модели:\n"
+            f"• Сервер: {self.model_server}\n"
+            f"• Модель: {self.model_name}\n\n"
+            "Для изменения настроек отправьте два сообщения:\n"
+            "1. Название сервера (gigachat/ollama)\n"
+            "2. Название модели"
+        )
+        await message.answer(current_settings, parse_mode=ParseMode.MARKDOWN)
+        
+        # Установка флага ожидания нового сервера
+        self.dp.message.register(
+            self.handle_server_change,
+            F.text,
+            state=lambda msg: msg.from_user.id == message.from_user.id
+        )
+
+    async def handle_server_change(self, message: Message) -> None:
+        """Обработчик изменения сервера модели"""
+        server = message.text.strip().lower()
+        if server in ['gigachat', 'ollama']:
+            self.model_server = server
+            await message.answer(
+                "Введите название модели:",
+                parse_mode=ParseMode.MARKDOWN
+            )
+            # Установка обработчика для названия модели
+            self.dp.message.register(
+                self.handle_model_change,
+                F.text,
+                state=lambda msg: msg.from_user.id == message.from_user.id
+            )
+        else:
+            await message.answer(
+                "❌ Неверный сервер. Используйте gigachat или ollama.",
+                parse_mode=ParseMode.MARKDOWN
+            )
+
+    async def handle_model_change(self, message: Message) -> None:
+        """Обработчик изменения названия модели"""
+        self.model_name = message.text.strip()
+        await message.answer(
+            f"✅ Настройки обновлены:\n• Сервер: {self.model_server}\n• Модель: {self.model_name}",
+            parse_mode=ParseMode.MARKDOWN
+        )
+        # Удаление временных обработчиков
+        self.dp.message.filters.clear()
+        self.setup_handlers()
 
     async def handle_message(self, message: Message) -> None:
         """Обработчик текстовых сообщений"""
